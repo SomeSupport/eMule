@@ -29,12 +29,11 @@ void CWebSocket::SetParent(CWebServer *pParent)
 	m_pParent = pParent;
 }
 
-void CWebSocket::OnRequestReceived(char* pHeader, DWORD dwHeaderLen, char* pData, DWORD dwDataLen, in_addr inad)
+void CWebSocket::OnRequestReceived(const char* pHeader, DWORD dwHeaderLen, const char* pData, DWORD dwDataLen, in_addr inad)
 {
 	CStringA sHeader(pHeader, dwHeaderLen);
 	CStringA sData(pData, dwDataLen);
 	CStringA sURL;
-	bool filereq=false;
 
 	if(sHeader.Left(3) == "GET")
 		sURL = sHeader.Trim();
@@ -46,16 +45,14 @@ void CWebSocket::OnRequestReceived(char* pHeader, DWORD dwHeaderLen, char* pData
 		sURL = sURL.Mid(sURL.Find(" ")+1, sURL.GetLength());
 	if(sURL.Find(" ") > -1)
 		sURL = sURL.Left(sURL.Find(" "));
-
-	if (sURL.GetLength()>4 &&	// min length (for valid extentions)
-		(sURL.Right(4).MakeLower()==".gif" || sURL.Right(4).MakeLower()==".jpg" || sURL.Right(4).MakeLower()==".png" ||
-		sURL.Right(4).MakeLower()==".ico" ||sURL.Right(4).MakeLower()==".css" ||sURL.Right(3).MakeLower()==".js" ||
-		sURL.Right(4).MakeLower()==".bmp" || sURL.Right(5).MakeLower()==".jpeg"
-		)
-		&& sURL.Find("..")==-1	// dont allow leaving the emule-webserver-folder for accessing files
-		)
-			filereq=true;
-
+	bool filereq = sURL.GetLength()>=3 && sURL.Find("..") < 0; // don't allow leaving the emule-webserver-folder for accessing files
+	if (filereq) {
+		CStringA ext(sURL.Right(5).MakeLower());
+		int i = ext.ReverseFind('.');
+		ext.Delete(0, i);
+		filereq = i>=0 && ext.GetLength()>2 && (ext==".gif" || ext==".jpg" || ext==".png" || ext==".ico" || ext==".css" || ext==".bmp"
+			|| ext==".js" || ext==".jpeg");
+	}
 	ThreadData Data;
 	Data.sURL = sURL;
 	Data.pThis = m_pParent;
@@ -77,8 +74,10 @@ void CWebSocket::OnReceived(void* pData, DWORD dwSize, in_addr inad)
 	if (m_dwBufSize < dwSize + m_dwRecv)
 	{
 		// reallocate
-		char* pNewBuf = new char[m_dwBufSize = dwSize + m_dwRecv + SIZE_PRESERVE];
-		if (!pNewBuf)
+		char* pNewBuf;
+		try {
+			pNewBuf = new char[m_dwBufSize = dwSize + m_dwRecv + SIZE_PRESERVE];
+		} catch (...)
 		{
 			m_bValid = false; // internal problem
 			return;
@@ -180,7 +179,7 @@ void CWebSocket::SendData(const void* pData, DWORD dwDataSize)
 				m_bValid = false;
 			}
 			else
-			{                
+			{
 				//-- in nRes still could be "-1" (if WSAEWOULDBLOCK occured)
 				//-- next to line should be like this:
 
@@ -197,29 +196,32 @@ void CWebSocket::SendData(const void* pData, DWORD dwDataSize)
 		if (dwDataSize && m_bValid)
 		{
 			// push it to our tails
-			CChunk* pChunk = new CChunk;
-			if (pChunk)
-			{
-				pChunk->m_pNext = NULL;
-				pChunk->m_dwSize = dwDataSize;
-				if ((pChunk->m_pData = new char[dwDataSize]) != NULL)
-				{
-					//-- data should be copied into "pChunk->m_pData" anyhow
-					//-- possible solution is simple:
-
-					CopyMemory(pChunk->m_pData, pData, dwDataSize);
-
-					// push it to the end of our queue
-					pChunk->m_pToSend = pChunk->m_pData;
-					if (m_pTail)
-						m_pTail->m_pNext = pChunk;
-					else
-						m_pHead = pChunk;
-					m_pTail = pChunk;
-
-				} else
-					delete pChunk; // oops, no memory (???)
+			CChunk* pChunk = NULL;
+			try {
+				pChunk = new CChunk;
+			} catch (...) {
+				return;
 			}
+			pChunk->m_pNext = NULL;
+			pChunk->m_dwSize = dwDataSize;
+			try {
+				pChunk->m_pData = new char[dwDataSize];
+			} catch (...) {
+				delete pChunk; // oops, no memory (???)
+				return;
+			}
+			//-- data should be copied into "pChunk->m_pData" anyhow
+			//-- possible solution is simple:
+
+			CopyMemory(pChunk->m_pData, pData, dwDataSize);
+
+			// push it to the end of our queue
+			pChunk->m_pToSend = pChunk->m_pData;
+			if (m_pTail)
+				m_pTail->m_pNext = pChunk;
+			else
+				m_pHead = pChunk;
+			m_pTail = pChunk;
 		}
 	}
 }
@@ -235,7 +237,7 @@ void CWebSocket::SendReply(LPCSTR szReply)
 void CWebSocket::SendContent(LPCSTR szStdResponse, const void* pContent, DWORD dwContentSize)
 {
 	char szBuf[0x1000];
-	int nLen = _snprintf(szBuf, _countof(szBuf), "HTTP/1.1 200 OK\r\n%sContent-Length: %ld\r\n\r\n", szStdResponse, dwContentSize);
+	int nLen = _snprintf(szBuf, _countof(szBuf), "HTTP/1.1 200 OK\r\n%sContent-Length: %lu\r\n\r\n", szStdResponse, dwContentSize);
 	if (nLen > 0) {
 		SendData(szBuf, nLen);
 		SendData(pContent, dwContentSize);
@@ -256,16 +258,18 @@ void CWebSocket::Disconnect()
 		if (m_pTail)
 		{
 			// push it as a tail
-			CChunk* pChunk = new CChunk;
-			if (pChunk)
-			{
-				pChunk->m_dwSize = 0;
-				pChunk->m_pData = NULL;
-				pChunk->m_pToSend = NULL;
-				pChunk->m_pNext = NULL;
-
-				m_pTail->m_pNext = pChunk;
+			CChunk* pChunk;
+			try {
+				pChunk = new CChunk;
+			} catch (...) {
+				return;
 			}
+			pChunk->m_dwSize = 0;
+			pChunk->m_pData = NULL;
+			pChunk->m_pToSend = NULL;
+			pChunk->m_pNext = NULL;
+
+			m_pTail->m_pNext = pChunk;
 
 		} else
 			if (shutdown(m_hSocket, SD_SEND))
@@ -284,7 +288,7 @@ UINT AFX_CDECL WebSocketAcceptedFunc(LPVOID pD)
 	SOCKET hSocket = pData->hSocket;
 	CWebServer *pThis = (CWebServer *)pData->pThis;
 	in_addr ad=pData->incomingaddr;
-	
+
 	delete pData;
 
 	ASSERT(INVALID_SOCKET != hSocket);
@@ -438,7 +442,7 @@ UINT AFX_CDECL WebSocketListeningFunc(LPVOID pThis)
 							if (INVALID_SOCKET == hAccepted)
 								break;
 
-							if (thePrefs.GetAllowedRemoteAccessIPs().GetCount() > 0)
+							if (!thePrefs.GetAllowedRemoteAccessIPs().IsEmpty())
 							{
 								bool bAllowedIP = false;
 								for (int i = 0; i < thePrefs.GetAllowedRemoteAccessIPs().GetCount(); i++)
@@ -450,7 +454,7 @@ UINT AFX_CDECL WebSocketListeningFunc(LPVOID pThis)
 									}
 								}
 								if (!bAllowedIP) {
-									LogWarning(_T("Web Interface: Rejected connection attempt from %s"), ipstr(their_addr.sin_addr.S_un.S_addr));
+									LogWarning(_T("Web Interface: Rejected connection attempt from %s"), (LPCTSTR)ipstr(their_addr.sin_addr.S_un.S_addr));
 									VERIFY( !closesocket(hAccepted) );
 									break;
 								}
@@ -462,7 +466,7 @@ UINT AFX_CDECL WebSocketListeningFunc(LPVOID pThis)
 								pData->hSocket = hAccepted;
 								pData->pThis = pThis;
 								pData->incomingaddr=their_addr.sin_addr;
-								
+
 								// - do NOT use Windows API 'CreateThread' to create a thread which uses MFC/CRT -> lot of mem leaks!
 								// - 'AfxBeginThread' could be used here, but creates a little too much overhead for our needs.
 								CWinThread* pAcceptThread = new CWinThread(WebSocketAcceptedFunc, (LPVOID)pData);
@@ -483,11 +487,9 @@ UINT AFX_CDECL WebSocketListeningFunc(LPVOID pThis)
 					}
 				}
 				VERIFY( CloseHandle(hEvent) );
-				hEvent = NULL;
 			}
 		}
 		VERIFY( !closesocket(hSocket) );
-		hSocket = NULL;
 	}
 
 	return 0;
@@ -500,7 +502,7 @@ void StartSockets(CWebServer *pThis)
 	if ((s_hTerminate = CreateEvent(NULL, TRUE, FALSE, NULL)) != NULL)
 	{
 		// - do NOT use Windows API 'CreateThread' to create a thread which uses MFC/CRT -> lot of mem leaks!
-		// - because we want to wait on the thread handle we have to disable 'CWinThread::m_AutoDelete' -> can't 
+		// - because we want to wait on the thread handle we have to disable 'CWinThread::m_AutoDelete' -> can't
 		//   use 'AfxBeginThread'
 		s_pSocketThread = new CWinThread(WebSocketListeningFunc, (LPVOID)pThis);
 		s_pSocketThread->m_bAutoDelete = FALSE;
@@ -534,7 +536,7 @@ void StopSockets()
 				VERIFY( TerminateThread(s_pSocketThread->m_hThread, (DWORD)-1) );
 				VERIFY( CloseHandle(s_pSocketThread->m_hThread) );
 			}
-			else if (dwWaitRes == -1)
+			else if (dwWaitRes == (UINT)-1)
 			{
 				TRACE("*** Failed to wait for websocket thread termination - Error %u\n", GetLastError());
 				ASSERT(0); // probable invalid thread handle

@@ -44,5 +44,5 @@ public:
 	void SendReply(LPCSTR szReply);
 	void Disconnect();
 
-	void OnRequestReceived(char* pHeader, DWORD dwHeaderLen, char* pData, DWORD dwDataLen , in_addr inad);
+	void OnRequestReceived(const char* pHeader, DWORD dwHeaderLen, const char* pData, DWORD dwDataLen , in_addr inad);
 };
