@@ -212,7 +212,7 @@ typedef struct
 	ServerSort		ServerSort;
 	bool			bServerSortReverse;
 	SharedSort		SharedSort;
-	bool			bSharedSortReverse;	
+	bool			bSharedSortReverse;
 	bool			bShowUploadQueue;
 	bool			bShowUploadQueueBanned;
 	bool			bShowUploadQueueFriend;
@@ -293,7 +293,7 @@ typedef struct
 	CString sCommentListLine;
 } WebTemplates;
 
-class CWebServer 
+class CWebServer
 {
 	friend class CWebSocket;
 
@@ -307,18 +307,19 @@ public:
 	void RestartServer();
 	void AddStatsLine(UpDown line);
 	void ReloadTemplates();
-	UINT GetSessionCount()	{ return m_Params.Sessions.GetCount();}
-	bool IsRunning()	{ return m_bServerWorking;}
-	CArray<UpDown>* GetPointsForWeb()	{return &m_Params.PointsForWeb;} // MobileMule
+	UINT GetSessionCount() { return m_Params.Sessions.GetCount(); }
+	bool IsRunning() const { return m_bServerWorking; }
+	CArray<UpDown>* GetPointsForWeb() { return &m_Params.PointsForWeb; } // MobileMule
 protected:
-	static void		ProcessURL(ThreadData);
-	static void		ProcessFileReq(ThreadData Data);
+	static void		ProcessURL(const ThreadData& Data);
+	static void		ProcessFileReq(const ThreadData& Data);
 
 private:
 	static CString	_GetHeader(ThreadData, long lSession);
 	static CString	_GetFooter(ThreadData);
 	static CString	_GetServerList(ThreadData);
 	static CString	_GetTransferList(ThreadData);
+	static CString	_GetTransferJSONList(ThreadData);
 	static CString	_GetSharedFilesList(ThreadData);
 	static CString	_GetGraphs(ThreadData);
 	static CString	_GetLog(ThreadData);
@@ -331,17 +332,17 @@ private:
 	static CString	_GetConnectedServer(ThreadData);
 	static CString 	_GetAddServerBox(ThreadData Data);
 	static CString	_GetCommentlist(ThreadData Data);
-	static void		_RemoveServer(CString sIP, int nPort);
-	static void		_AddToStatic(CString sIP, int nPort);
-	static void		_RemoveFromStatic(CString sIP, int nPort);
-	static uchar*	_GetFileHash(CString sHash, uchar *FileHash);
+	static void		_RemoveServer(const CString& sIP, int nPort);
+	static void		_AddToStatic(const CString& sIP, int nPort);
+	static void		_RemoveFromStatic(const CString& sIP, int nPort);
+	static uchar*	_GetFileHash(const CString& sHash, uchar *FileHash);
 
 	static CString	_GetWebSearch(ThreadData Data);
 	static CString	_GetSearch(ThreadData Data);
 
-	static CString	_ParseURL(CString URL, CString fieldname); 
-	static CString	_ParseURLArray(CString URL, CString fieldname);
-	static void		_ConnectToServer(CString sIP, int nPort);
+	static CString	_ParseURL(const CString& URL, const CString& fieldname);
+	static CString	_ParseURLArray(CString& URL, CString fieldname);
+	static void		_ConnectToServer(const CString& sIP, int nPort);
 	static bool		_IsLoggedIn(ThreadData Data, long lSession);
 	static void		_RemoveTimeOuts(ThreadData Data);
 	static bool		_RemoveSession(ThreadData Data, long lSession);
@@ -349,28 +350,28 @@ private:
 	static CString	_GetPlainResString(UINT nID, bool noquote = true);
 	static void		_GetPlainResString(CString *pstrOut, UINT nID, bool noquote = true);
 	static int		_GzipCompress(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen, int level);
-	CString			_LoadTemplate(CString sAll, CString sTemplateName);
-	static Session	GetSessionByID(ThreadData Data,long sessionID);
+	CString			_LoadTemplate(const CString& sAll, const CString& sTemplateName);
+	static Session	GetSessionByID(ThreadData Data, long sessionID);
 	static bool		IsSessionAdmin(ThreadData Data, const CString &strSsessionID);
 	static CString	GetPermissionDenied();
-	static CString	_GetDownloadGraph(ThreadData Data,CString filehash);
-	static void		InsertCatBox(CString &Out,int preselect,CString boxlabel, bool jump,bool extraCats,CString sSession,CString sFileHash,bool ed2kbox=false);
+	static CString	_GetDownloadGraph(const ThreadData& Data, const CString& filehash);
+	static void		InsertCatBox(CString &Out, int preselect, const CString& boxlabel, bool jump, bool extraCats, const CString& sSession, const CString& sFileHash, bool ed2kbox = false);
 	static CString	GetSubCatLabel(int iCat);
-	static CString  _GetRemoteLinkAddedOk(ThreadData Data);
-	static CString  _GetRemoteLinkAddedFailed(ThreadData Data);
-	static void		_SetLastUserCat(ThreadData Data, long lSession,int cat);
-	static int		_GetLastUserCat(ThreadData Data, long lSession);
+	static CString  _GetRemoteLinkAddedOk(const ThreadData& Data);
+	static CString  _GetRemoteLinkAddedFailed(const ThreadData& Data);
+	static void		_SetLastUserCat(const ThreadData& Data, long lSession, int cat);
+	static int		_GetLastUserCat(const ThreadData& Data, long lSession);
 	static CString	_CreateTransferList(CString Out, CWebServer *pThis, ThreadData* Data, void* FilesArray, void* UploadArray, bool bAdmin);
 
 private:
 	static void		SaveWIConfigArray(BOOL array[], int size, LPCTSTR key);
-	static CString	GetWebImageNameForFileType(CString filename);
+	static CString	GetWebImageNameForFileType(const CString& filename);
 	static CString  GetClientSummary(CUpDownClient* client);
-	static CString	_GetMyInfo(ThreadData Data);
+	static CString	_GetMyInfo(const ThreadData& Data);
 	static CString	GetClientversionImage(CUpDownClient* client);
 
 
-// Common data
+	// Common data
 	GlobalParams	m_Params;
 	WebTemplates	m_Templates;
 	bool			m_bServerWorking;
@@ -379,6 +380,6 @@ private:
 	uint16			m_nIntruderDetect;
 	bool			m_bIsTempDisabled;
 	uint32			m_nStartTempDisabledTime;
-	bool			GetIsTempDisabled() { return m_bIsTempDisabled; }
+	bool			GetIsTempDisabled() const { return m_bIsTempDisabled; }
 	ULONG			m_ulCurIP;
 };
