@@ -5,13 +5,13 @@ class CWebServer;
 void StartSockets(CWebServer *pThis);
 void StopSockets();
 
-class CWebSocket 
+class CWebSocket
 {
 public:
 	void SetParent(CWebServer *);
 	CWebServer* m_pParent;
 
-	class CChunk 
+	class CChunk
 	{
 	public:
 		char* m_pData;
@@ -44,5 +44,5 @@ public:
 	void SendReply(LPCSTR szReply);
 	void Disconnect();
 
-	void OnRequestReceived(const char* pHeader, DWORD dwHeaderLen, const char* pData, DWORD dwDataLen , in_addr inad);
+	void OnRequestReceived(const char* pHeader, DWORD dwHeaderLen, const char* pData, DWORD dwDataLen, in_addr inad);
 };

@@ -307,9 +307,9 @@ public:
 	void RestartServer();
 	void AddStatsLine(UpDown line);
 	void ReloadTemplates();
-	UINT GetSessionCount()	{ return m_Params.Sessions.GetCount();}
-	bool IsRunning() const	{ return m_bServerWorking;}
-	CArray<UpDown>* GetPointsForWeb()	{return &m_Params.PointsForWeb;} // MobileMule
+	UINT GetSessionCount() { return m_Params.Sessions.GetCount(); }
+	bool IsRunning() const { return m_bServerWorking; }
+	CArray<UpDown>* GetPointsForWeb() { return &m_Params.PointsForWeb; } // MobileMule
 protected:
 	static void		ProcessURL(const ThreadData& Data);
 	static void		ProcessFileReq(const ThreadData& Data);
@@ -319,6 +319,7 @@ private:
 	static CString	_GetFooter(ThreadData);
 	static CString	_GetServerList(ThreadData);
 	static CString	_GetTransferList(ThreadData);
+	static CString	_GetTransferJSONList(ThreadData);
 	static CString	_GetSharedFilesList(ThreadData);
 	static CString	_GetGraphs(ThreadData);
 	static CString	_GetLog(ThreadData);
@@ -350,10 +351,10 @@ private:
 	static void		_GetPlainResString(CString *pstrOut, UINT nID, bool noquote = true);
 	static int		_GzipCompress(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen, int level);
 	CString			_LoadTemplate(const CString& sAll, const CString& sTemplateName);
-	static Session	GetSessionByID(ThreadData Data,long sessionID);
+	static Session	GetSessionByID(ThreadData Data, long sessionID);
 	static bool		IsSessionAdmin(ThreadData Data, const CString &strSsessionID);
 	static CString	GetPermissionDenied();
-	static CString	_GetDownloadGraph(const ThreadData& Data,const CString& filehash);
+	static CString	_GetDownloadGraph(const ThreadData& Data, const CString& filehash);
 	static void		InsertCatBox(CString &Out, int preselect, const CString& boxlabel, bool jump, bool extraCats, const CString& sSession, const CString& sFileHash, bool ed2kbox = false);
 	static CString	GetSubCatLabel(int iCat);
 	static CString  _GetRemoteLinkAddedOk(const ThreadData& Data);
@@ -370,7 +371,7 @@ private:
 	static CString	GetClientversionImage(CUpDownClient* client);
 
 
-// Common data
+	// Common data
 	GlobalParams	m_Params;
 	WebTemplates	m_Templates;
 	bool			m_bServerWorking;
@@ -379,6 +380,6 @@ private:
 	uint16			m_nIntruderDetect;
 	bool			m_bIsTempDisabled;
 	uint32			m_nStartTempDisabledTime;
-	bool			GetIsTempDisabled() const	{ return m_bIsTempDisabled; }
+	bool			GetIsTempDisabled() const { return m_bIsTempDisabled; }
 	ULONG			m_ulCurIP;
 };
